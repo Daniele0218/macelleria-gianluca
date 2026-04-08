@@ -59,7 +59,7 @@ export default function ExpenseList({ expenses, loading, onDelete }: Props) {
             className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] text-sm text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-success)]"
           />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
           <button
             onClick={() => setFilterCat('')}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${

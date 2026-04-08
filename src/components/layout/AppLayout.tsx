@@ -10,9 +10,9 @@ interface Props {
 
 export default function AppLayout({ dark, onToggleTheme }: Props) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       <Sidebar dark={dark} onToggleTheme={onToggleTheme} />
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Mobile header */}
         <header className="md:hidden bg-[#292524] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-40">
           <div>

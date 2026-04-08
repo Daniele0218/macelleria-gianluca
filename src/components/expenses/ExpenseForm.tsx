@@ -38,19 +38,39 @@ export default function ExpenseForm({ onAdd }: Props) {
     }
   };
 
+  // Determine the subcategory value to submit
+  const getSubcategoryValue = (): string => {
+    if (!config) return '';
+    // If there's a dropdown and user selected something
+    if (config.subcategories.length > 0 && subcategory && subcategory !== '__other__') {
+      return subcategory;
+    }
+    // If freeText is filled (for freeText categories or "Altro" option)
+    if (freeText.trim()) {
+      return freeText.trim();
+    }
+    // If category has no subcategories and no freeText, use category label
+    if (config.subcategories.length === 0 && !config.freeText) {
+      return config.label;
+    }
+    // If user selected category with subcategories but didn't pick one, use category label
+    if (config.subcategories.length > 0 && !subcategory) {
+      return config.label;
+    }
+    return '';
+  };
+
+  const canSubmit = !!category && !!amount && parseFloat(amount) > 0;
+
   const handleSubmit = async () => {
-    if (!category) return;
-    const sub = config?.freeText
-      ? (config.subcategories.length > 0 && subcategory ? subcategory : freeText)
-      : subcategory;
-    if (!sub.trim()) return;
+    if (!canSubmit) return;
+    const sub = getSubcategoryValue();
     const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
 
     setSaving(true);
     const ok = await onAdd({
-      category,
-      subcategory: sub.trim(),
+      category: category as ExpenseCategory,
+      subcategory: sub || config!.label,
       amount: amt,
       vatRate,
       note: note.trim() || null,
@@ -60,7 +80,6 @@ export default function ExpenseForm({ onAdd }: Props) {
       setFreeText('');
       setAmount('');
       setNote('');
-      // Keep category for fast re-entry
     }
     setSaving(false);
   };
@@ -92,12 +111,12 @@ export default function ExpenseForm({ onAdd }: Props) {
 
         {showSubDropdown && (
           <Select
-            label="Sottocategoria"
+            label="Sottocategoria (opzionale)"
             options={[
               ...subcategoryOptions,
               ...(showFreeText ? [{ value: '__other__', label: '+ Altro...' }] : []),
             ]}
-            placeholder="Seleziona..."
+            placeholder="Generale..."
             value={subcategory}
             onChange={(e) => setSubcategory(e.target.value)}
           />
@@ -105,7 +124,7 @@ export default function ExpenseForm({ onAdd }: Props) {
 
         {showFreeText && (!showSubDropdown || subcategory === '__other__') && (
           <Input
-            label={showSubDropdown ? 'Specifica' : 'Descrizione'}
+            label={showSubDropdown ? 'Specifica' : 'Descrizione (opzionale)'}
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
             placeholder="Es: nome fornitore..."
@@ -166,7 +185,7 @@ export default function ExpenseForm({ onAdd }: Props) {
           onClick={handleSubmit}
           loading={saving}
           fullWidth
-          disabled={!category || (!subcategory && !freeText.trim()) || !amount}
+          disabled={!canSubmit}
         >
           <Plus size={18} /> Aggiungi Spesa
         </Button>
