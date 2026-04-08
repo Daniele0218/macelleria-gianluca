@@ -3,5 +3,6 @@ dist/
 .env
 .env.local
 .superpowers/
+.claude/
 .DS_Store
 *.log

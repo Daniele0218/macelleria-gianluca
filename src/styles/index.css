@@ -1,8 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --color-surface: #FAF8F5;
+  --color-card: #FFFFFF;
+  --color-border: #E7E5E4;
+  --color-header: #292524;
+  --color-subdued: #616161;
+}
 
 @layer base {
   :root {
@@ -28,18 +34,12 @@
   }
 
   body {
-    @apply bg-[var(--color-surface)] text-[var(--color-text)] font-sans antialiased;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.2s, color 0.2s;
-  }
-
-  /* Smooth transitions for theme changes */
-  * {
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  }
-
-  /* Remove transition on initial load */
-  .no-transition * {
-    transition: none !important;
   }
 
   /* Custom scrollbar */

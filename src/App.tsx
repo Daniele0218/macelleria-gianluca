@@ -2,15 +2,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useTheme } from './hooks/useTheme';
 import AppLayout from './components/layout/AppLayout';
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="p-6">
-      <h2 className="text-xl font-bold">{title}</h2>
-      <p className="text-[var(--color-subdued)] mt-2">In costruzione...</p>
-    </div>
-  );
-}
+import RevenuesPage from './pages/RevenuesPage';
+import ExpensesPage from './pages/ExpensesPage';
+import DashboardPage from './pages/DashboardPage';
+import SuppliersPage from './pages/SuppliersPage';
+import SettingsPage from './pages/SettingsPage';
 
 export default function App() {
   const { dark, toggle } = useTheme();
@@ -32,11 +28,11 @@ export default function App() {
       />
       <Routes>
         <Route element={<AppLayout dark={dark} onToggleTheme={toggle} />}>
-          <Route path="/" element={<Placeholder title="Incassi" />} />
-          <Route path="/spese" element={<Placeholder title="Spese" />} />
-          <Route path="/dashboard" element={<Placeholder title="Dashboard" />} />
-          <Route path="/fornitori" element={<Placeholder title="Fornitori" />} />
-          <Route path="/altro" element={<Placeholder title="Altro" />} />
+          <Route path="/" element={<RevenuesPage />} />
+          <Route path="/spese" element={<ExpensesPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/fornitori" element={<SuppliersPage />} />
+          <Route path="/altro" element={<SettingsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
