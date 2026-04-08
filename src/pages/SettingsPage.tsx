@@ -13,7 +13,7 @@ const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
 ];
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('operai');
+  const [tab, setTab] = useState<Tab>('stipendi');
 
   return (
     <div className="p-4 space-y-4 overflow-hidden">
