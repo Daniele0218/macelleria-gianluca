@@ -155,28 +155,31 @@ export default function SalaryManager() {
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {SALARY_TYPES.map(({ key, label }) => (
-                  <div key={key} className="space-y-1">
-                    <label className="block text-[10px] uppercase tracking-wider font-semibold text-[var(--color-subdued)]">
-                      {label}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[var(--color-subdued)]">€</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.01"
-                        value={getValue(emp.id, key, emp.monthly_salary)}
-                        onChange={(e) => setValues({ ...values, [getKey(emp.id, key)]: e.target.value })}
-                        className={`w-full pl-6 pr-2 py-2 text-sm rounded-lg border bg-[var(--color-card)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                          isPaid(emp.id, key) ? 'border-green-300 dark:border-green-700' : 'border-[var(--color-border)]'
-                        }`}
-                        placeholder="0"
-                      />
+              <div className="grid grid-cols-3 gap-1.5 overflow-hidden">
+                {SALARY_TYPES.map(({ key, label }) => {
+                  const shortLabel = key === 'stipendio' ? 'Stip.' : key === 'inps' ? 'INPS' : 'TFR';
+                  return (
+                    <div key={key} className="space-y-1 min-w-0">
+                      <label className="block text-[9px] uppercase tracking-wider font-semibold text-[var(--color-subdued)] truncate" title={label}>
+                        {shortLabel}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[11px] text-[var(--color-subdued)]">€</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="0.01"
+                          value={getValue(emp.id, key, emp.monthly_salary)}
+                          onChange={(e) => setValues({ ...values, [getKey(emp.id, key)]: e.target.value })}
+                          className={`w-full pl-5 pr-1 py-2 text-sm rounded-lg border bg-[var(--color-card)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                            isPaid(emp.id, key) ? 'border-green-300 dark:border-green-700' : 'border-[var(--color-border)]'
+                          }`}
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </Card>
           ))}

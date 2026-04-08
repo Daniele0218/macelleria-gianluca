@@ -111,12 +111,12 @@ export default function ExpenseForm({ onAdd }: Props) {
 
         {showSubDropdown && (
           <Select
-            label="Sottocategoria (opzionale)"
+            label="Sottocategoria"
             options={[
               ...subcategoryOptions,
               ...(showFreeText ? [{ value: '__other__', label: '+ Altro...' }] : []),
             ]}
-            placeholder="Generale..."
+            placeholder="Seleziona..."
             value={subcategory}
             onChange={(e) => setSubcategory(e.target.value)}
           />
@@ -124,7 +124,7 @@ export default function ExpenseForm({ onAdd }: Props) {
 
         {showFreeText && (!showSubDropdown || subcategory === '__other__') && (
           <Input
-            label={showSubDropdown ? 'Specifica' : 'Descrizione (opzionale)'}
+            label={showSubDropdown ? 'Specifica' : 'Descrizione'}
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
             placeholder="Es: nome fornitore..."

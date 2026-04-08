@@ -16,7 +16,7 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>('operai');
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 overflow-hidden">
       <h2 className="text-lg font-bold text-[var(--color-text)]">Impostazioni</h2>
 
       {/* Tab bar */}
