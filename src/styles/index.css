@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --color-surface: #FAF8F5;
+    --color-card: #FFFFFF;
+    --color-border: #E7E5E4;
+    --color-text: #1A1A1A;
+    --color-subdued: #616161;
+    --color-header: #292524;
+    --color-success: #16A34A;
+    --color-info: #2563EB;
+    --color-danger: #DC2626;
+    --color-warning: #D97706;
+  }
+
+  .dark {
+    --color-surface: #1A1A1A;
+    --color-card: #303030;
+    --color-border: #404040;
+    --color-text: #E3E3E6;
+    --color-subdued: #8C8C8C;
+    --color-header: #292524;
+  }
+
+  body {
+    @apply bg-[var(--color-surface)] text-[var(--color-text)] font-sans antialiased;
+    transition: background-color 0.2s, color 0.2s;
+  }
+
+  /* Smooth transitions for theme changes */
+  * {
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+
+  /* Remove transition on initial load */
+  .no-transition * {
+    transition: none !important;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+  }
+
+  /* Input number - hide arrows */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}

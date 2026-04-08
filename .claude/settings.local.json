@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash:*)",
+      "Bash(npm create:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "supabase@claude-plugins-official": true
+  }
+}
