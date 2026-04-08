@@ -77,7 +77,18 @@ CREATE TABLE salary_payments (
 CREATE INDEX idx_salary_payments_month ON salary_payments(month);
 CREATE INDEX idx_salary_payments_employee ON salary_payments(employee_id);
 
--- 5. Sicurezza: RLS aperto (app privata senza autenticazione)
+-- 5. Categorie/Sottocategorie personalizzate
+CREATE TABLE custom_expense_options (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  type text NOT NULL CHECK (type IN ('category', 'subcategory')),
+  category_key text,
+  name text NOT NULL,
+  icon text DEFAULT '📌',
+  vat_rate integer DEFAULT 22,
+  created_at timestamptz DEFAULT now()
+);
+
+-- 6. Sicurezza: RLS aperto (app privata senza autenticazione)
 ALTER TABLE daily_revenues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
@@ -87,3 +98,6 @@ CREATE POLICY "Accesso completo daily_revenues" ON daily_revenues FOR ALL USING 
 CREATE POLICY "Accesso completo expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accesso completo employees" ON employees FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Accesso completo salary_payments" ON salary_payments FOR ALL USING (true) WITH CHECK (true);
+
+ALTER TABLE custom_expense_options ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Accesso completo custom_expense_options" ON custom_expense_options FOR ALL USING (true) WITH CHECK (true);

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { ExpenseCategory } from '../../lib/types';
-import { CATEGORIES, getCategoryConfig, getVatRate } from '../../lib/constants';
+import { CATEGORIES } from '../../lib/constants';
+import { useCustomOptions } from '../../hooks/useCustomOptions';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Select from '../ui/Select';
 import Input from '../ui/Input';
+import Modal from '../ui/Modal';
 
 interface Props {
   onAdd: (data: {
@@ -18,7 +20,10 @@ interface Props {
 }
 
 export default function ExpenseForm({ onAdd }: Props) {
-  const [category, setCategory] = useState<ExpenseCategory | ''>('');
+  const { getAllCategories, getSubcategoriesFor, addCategory, addSubcategory } = useCustomOptions();
+  const allCategories = getAllCategories();
+
+  const [category, setCategory] = useState<string>('');
   const [subcategory, setSubcategory] = useState('');
   const [freeText, setFreeText] = useState('');
   const [amount, setAmount] = useState('');
@@ -26,38 +31,45 @@ export default function ExpenseForm({ onAdd }: Props) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const config = category ? getCategoryConfig(category) : null;
+  // New category modal
+  const [showNewCat, setShowNewCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatVat, setNewCatVat] = useState(22);
+
+  // New subcategory modal
+  const [showNewSub, setShowNewSub] = useState(false);
+  const [newSubName, setNewSubName] = useState('');
+
+  const config = category ? allCategories.find((c) => c.key === category) : null;
+  const isHardcoded = CATEGORIES.some((c) => c.key === category);
 
   const handleCategoryChange = (value: string) => {
-    const cat = value as ExpenseCategory;
-    setCategory(cat);
+    if (value === '__new__') {
+      setShowNewCat(true);
+      return;
+    }
+    setCategory(value);
     setSubcategory('');
     setFreeText('');
-    if (cat) {
-      setVatRate(getVatRate(cat));
+    if (value) {
+      const cat = allCategories.find((c) => c.key === value);
+      if (cat) setVatRate(cat.vatRate);
     }
   };
 
-  // Determine the subcategory value to submit
+  const handleSubcategoryChange = (value: string) => {
+    if (value === '__new__') {
+      setShowNewSub(true);
+      return;
+    }
+    setSubcategory(value);
+  };
+
   const getSubcategoryValue = (): string => {
     if (!config) return '';
-    // If there's a dropdown and user selected something
-    if (config.subcategories.length > 0 && subcategory && subcategory !== '__other__') {
-      return subcategory;
-    }
-    // If freeText is filled (for freeText categories or "Altro" option)
-    if (freeText.trim()) {
-      return freeText.trim();
-    }
-    // If category has no subcategories and no freeText, use category label
-    if (config.subcategories.length === 0 && !config.freeText) {
-      return config.label;
-    }
-    // If user selected category with subcategories but didn't pick one, use category label
-    if (config.subcategories.length > 0 && !subcategory) {
-      return config.label;
-    }
-    return '';
+    if (subcategory && subcategory !== '__other__' && subcategory !== '__new__') return subcategory;
+    if (freeText.trim()) return freeText.trim();
+    return config.label;
   };
 
   const canSubmit = !!category && !!amount && parseFloat(amount) > 0;
@@ -84,88 +96,175 @@ export default function ExpenseForm({ onAdd }: Props) {
     setSaving(false);
   };
 
-  const categoryOptions = CATEGORIES.map((c) => ({
-    value: c.key,
-    label: `${c.icon} ${c.label}`,
-  }));
+  const handleAddCategory = async () => {
+    if (!newCatName.trim()) return;
+    const ok = await addCategory(newCatName.trim(), '📌', newCatVat);
+    if (ok) {
+      setNewCatName('');
+      setNewCatVat(22);
+      setShowNewCat(false);
+    }
+  };
 
-  const subcategoryOptions = config?.subcategories.map((s) => ({
-    value: s,
-    label: s,
-  })) || [];
+  const handleAddSubcategory = async () => {
+    if (!newSubName.trim() || !category) return;
+    const ok = await addSubcategory(category, newSubName.trim());
+    if (ok) {
+      setSubcategory(newSubName.trim());
+      setNewSubName('');
+      setShowNewSub(false);
+    }
+  };
 
-  const showFreeText = config?.freeText;
-  const showSubDropdown = config && config.subcategories.length > 0;
+  const categoryOptions = [
+    ...allCategories.map((c) => ({
+      value: c.key,
+      label: `${c.icon} ${c.label}`,
+    })),
+    { value: '__new__', label: '➕ Nuova categoria...' },
+  ];
+
+  const allSubcategories = category ? getSubcategoriesFor(category) : [];
+  const subcategoryOptions = [
+    ...allSubcategories.map((s) => ({ value: s, label: s })),
+    ...(config?.freeText ? [{ value: '__other__', label: '+ Altro...' }] : []),
+    { value: '__new__', label: '➕ Nuova sottocategoria...' },
+  ];
+
+  const showSubDropdown = config && (allSubcategories.length > 0 || !isHardcoded);
+  const showFreeText = config?.freeText && subcategory === '__other__';
 
   return (
-    <Card className="p-4">
-      <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">Nuova Spesa</h3>
-      <div className="space-y-3">
-        <Select
-          label="Categoria"
-          options={categoryOptions}
-          placeholder="Seleziona categoria..."
-          value={category}
-          onChange={(e) => handleCategoryChange(e.target.value)}
-        />
-
-        {showSubDropdown && (
+    <>
+      <Card className="p-4">
+        <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">Nuova Spesa</h3>
+        <div className="space-y-3">
           <Select
-            label="Sottocategoria"
-            options={[
-              ...subcategoryOptions,
-              ...(showFreeText ? [{ value: '__other__', label: '+ Altro...' }] : []),
-            ]}
-            placeholder="Seleziona..."
-            value={subcategory}
-            onChange={(e) => setSubcategory(e.target.value)}
+            label="Categoria"
+            options={categoryOptions}
+            placeholder="Seleziona categoria..."
+            value={category}
+            onChange={(e) => handleCategoryChange(e.target.value)}
           />
-        )}
 
-        {showFreeText && (!showSubDropdown || subcategory === '__other__') && (
+          {showSubDropdown && (
+            <Select
+              label="Sottocategoria"
+              options={subcategoryOptions}
+              placeholder="Seleziona..."
+              value={subcategory}
+              onChange={(e) => handleSubcategoryChange(e.target.value)}
+            />
+          )}
+
+          {showFreeText && (
+            <Input
+              label="Specifica"
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              placeholder="Es: nome fornitore..."
+            />
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Importo"
+              prefix="€"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0,00"
+            />
+            <div className="space-y-1.5">
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-[var(--color-subdued)]">
+                IVA
+              </label>
+              <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden h-[46px]">
+                <button
+                  type="button"
+                  onClick={() => setVatRate(10)}
+                  className={`flex-1 text-sm font-semibold transition-colors ${
+                    vatRate === 10
+                      ? 'bg-green-600 text-white'
+                      : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+                  }`}
+                >
+                  10%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVatRate(22)}
+                  className={`flex-1 text-sm font-semibold transition-colors ${
+                    vatRate === 22
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+                  }`}
+                >
+                  22%
+                </button>
+              </div>
+            </div>
+          </div>
+
           <Input
-            label={showSubDropdown ? 'Specifica' : 'Descrizione'}
-            value={freeText}
-            onChange={(e) => setFreeText(e.target.value)}
-            placeholder="Es: nome fornitore..."
+            label="Nota"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Nota opzionale..."
           />
-        )}
 
-        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={handleSubmit}
+            loading={saving}
+            fullWidth
+            disabled={!canSubmit}
+          >
+            <Plus size={18} /> Aggiungi Spesa
+          </Button>
+        </div>
+      </Card>
+
+      {/* New Category Modal */}
+      <Modal
+        open={showNewCat}
+        onClose={() => setShowNewCat(false)}
+        title="Nuova Categoria"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowNewCat(false)}>Annulla</Button>
+            <Button onClick={handleAddCategory} disabled={!newCatName.trim()}>Aggiungi</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
           <Input
-            label="Importo"
-            prefix="€"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0,00"
+            label="Nome categoria"
+            value={newCatName}
+            onChange={(e) => setNewCatName(e.target.value)}
+            placeholder="Es: Pulizie, Trasporto..."
           />
           <div className="space-y-1.5">
             <label className="block text-[11px] uppercase tracking-wider font-semibold text-[var(--color-subdued)]">
-              IVA
+              IVA predefinita
             </label>
-            <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden h-[46px]">
+            <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden h-[42px]">
               <button
                 type="button"
-                onClick={() => setVatRate(10)}
+                onClick={() => setNewCatVat(10)}
                 className={`flex-1 text-sm font-semibold transition-colors ${
-                  vatRate === 10
-                    ? 'bg-green-600 text-white'
-                    : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+                  newCatVat === 10 ? 'bg-green-600 text-white' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
                 }`}
               >
                 10%
               </button>
               <button
                 type="button"
-                onClick={() => setVatRate(22)}
+                onClick={() => setNewCatVat(22)}
                 className={`flex-1 text-sm font-semibold transition-colors ${
-                  vatRate === 22
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+                  newCatVat === 22 ? 'bg-blue-600 text-white' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
                 }`}
               >
                 22%
@@ -173,23 +272,27 @@ export default function ExpenseForm({ onAdd }: Props) {
             </div>
           </div>
         </div>
+      </Modal>
 
+      {/* New Subcategory Modal */}
+      <Modal
+        open={showNewSub}
+        onClose={() => setShowNewSub(false)}
+        title="Nuova Sottocategoria"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowNewSub(false)}>Annulla</Button>
+            <Button onClick={handleAddSubcategory} disabled={!newSubName.trim()}>Aggiungi</Button>
+          </>
+        }
+      >
         <Input
-          label="Nota"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Nota opzionale..."
+          label={`Sottocategoria per ${config?.label || ''}`}
+          value={newSubName}
+          onChange={(e) => setNewSubName(e.target.value)}
+          placeholder="Es: nome fornitore..."
         />
-
-        <Button
-          onClick={handleSubmit}
-          loading={saving}
-          fullWidth
-          disabled={!canSubmit}
-        >
-          <Plus size={18} /> Aggiungi Spesa
-        </Button>
-      </div>
-    </Card>
+      </Modal>
+    </>
   );
 }
