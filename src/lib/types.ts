@@ -32,7 +32,7 @@ export interface SalaryPayment {
   id: string;
   employee_id: string;
   month: string;
-  type: 'stipendio' | 'inps' | 'tfr';
+  type: 'stipendio' | 'inps' | 'tfr' | 'giornata';
   amount: number;
   note: string | null;
   created_at: string;

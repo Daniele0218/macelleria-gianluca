@@ -1,106 +1,139 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Check, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Check, User, Trash2 } from 'lucide-react';
 import { useEmployees } from '../../hooks/useEmployees';
-import { useSalaryPayments } from '../../hooks/useSalaryPayments';
-import { formatMonth, formatCurrency, firstOfMonth } from '../../lib/formatters';
-import { SALARY_TYPES } from '../../lib/constants';
 import { supabase } from '../../lib/supabase';
+import { formatMonth, formatCurrency, formatDate } from '../../lib/formatters';
 import type { SalaryPayment } from '../../lib/types';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import Modal from '../ui/Modal';
 import Spinner from '../ui/Spinner';
+import toast from 'react-hot-toast';
 
-type ViewMode = 'register' | 'history';
+type PayMode = 'giornata' | 'mensile';
 
 export default function SalaryManager() {
-  const [date, setDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('register');
-  const monthStr = firstOfMonth(date);
   const { active, loading: empLoading } = useEmployees();
-  const { getPayment, saveAll, totalMonth, loading: salLoading } = useSalaryPayments(monthStr);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [payMode, setPayMode] = useState<PayMode>('giornata');
+  const [selectedEmp, setSelectedEmp] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(new Date());
   const [saving, setSaving] = useState(false);
-  const [history, setHistory] = useState<(SalaryPayment & { employee_name?: string })[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const prevMonth = () => { setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1)); setValues({}); };
-  const nextMonth = () => { setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1)); setValues({}); };
+  // History
+  const [payments, setPayments] = useState<(SalaryPayment & { employee_name?: string })[]>([]);
+  const [histLoading, setHistLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Load payment history for this month
+  const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+
+  // Load payments for current month
+  const loadPayments = async () => {
+    setHistLoading(true);
+    const { data } = await supabase
+      .from('salary_payments')
+      .select('*, employees(name)')
+      .eq('month', monthStr)
+      .order('created_at', { ascending: false });
+    const mapped = (data || []).map((d: Record<string, unknown>) => ({
+      ...d,
+      employee_name: (d.employees as { name: string } | null)?.name || '?',
+    })) as (SalaryPayment & { employee_name?: string })[];
+    setPayments(mapped);
+    setHistLoading(false);
+  };
+
+  useEffect(() => { loadPayments(); }, [monthStr]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-select first employee
   useEffect(() => {
-    if (viewMode === 'history') {
-      const loadHistory = async () => {
-        setHistoryLoading(true);
-        const { data } = await supabase
-          .from('salary_payments')
-          .select('*, employees(name)')
-          .eq('month', monthStr)
-          .order('created_at', { ascending: false });
-        const mapped = (data || []).map((d: Record<string, unknown>) => ({
-          ...d,
-          employee_name: (d.employees as { name: string } | null)?.name || '?',
-        })) as (SalaryPayment & { employee_name?: string })[];
-        setHistory(mapped);
-        setHistoryLoading(false);
-      };
-      loadHistory();
+    if (active.length > 0 && !selectedEmp) {
+      setSelectedEmp(active[0].id);
     }
-  }, [viewMode, monthStr]);
+  }, [active, selectedEmp]);
 
-  const getKey = (empId: string, type: string) => `${empId}_${type}`;
-
-  const getValue = (empId: string, type: 'stipendio' | 'inps' | 'tfr', fallback: number) => {
-    const key = getKey(empId, type);
-    if (key in values) return values[key];
-    const existing = getPayment(empId, type);
-    if (existing) return String(existing.amount);
-    if (type === 'stipendio' && fallback > 0) return String(fallback);
-    return '';
-  };
-
-  const isPaid = (empId: string, type: 'stipendio' | 'inps' | 'tfr') => {
-    return !!getPayment(empId, type);
-  };
+  // Pre-fill amount from employee salary when selecting monthly
+  useEffect(() => {
+    if (payMode === 'mensile' && selectedEmp) {
+      const emp = active.find(e => e.id === selectedEmp);
+      if (emp && emp.monthly_salary > 0) {
+        setAmount(String(emp.monthly_salary));
+      }
+    }
+  }, [payMode, selectedEmp, active]);
 
   const handleSave = async () => {
+    if (!selectedEmp || !amount) return;
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) return;
+
     setSaving(true);
-    const data: { employeeId: string; type: 'stipendio' | 'inps' | 'tfr'; amount: number }[] = [];
-    active.forEach((emp) => {
-      SALARY_TYPES.forEach(({ key }) => {
-        const val = parseFloat(getValue(emp.id, key, emp.monthly_salary)) || 0;
-        if (val > 0) {
-          data.push({ employeeId: emp.id, type: key, amount: val });
-        }
-      });
+    const type = payMode === 'giornata' ? 'giornata' : 'stipendio';
+
+    const { error } = await supabase.from('salary_payments').insert({
+      employee_id: selectedEmp,
+      month: monthStr,
+      type,
+      amount: amt,
     });
-    await saveAll(data);
-    setValues({});
+
+    if (error) {
+      toast.error('Errore salvataggio');
+      console.error(error);
+    } else {
+      toast.success('Pagamento registrato!');
+      setSaved(true);
+      setAmount('');
+      setTimeout(() => setSaved(false), 3000);
+      await loadPayments();
+    }
     setSaving(false);
   };
 
-  if (empLoading || salLoading) return <Spinner />;
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    const { error } = await supabase.from('salary_payments').delete().eq('id', deleteId);
+    if (error) toast.error('Errore eliminazione');
+    else { toast.success('Pagamento eliminato'); await loadPayments(); }
+    setDeleteId(null);
+  };
+
+  const prevMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() - 1, 1));
+  const nextMonth = () => setDate(new Date(date.getFullYear(), date.getMonth() + 1, 1));
+
+  const totalMonth = payments.reduce((s, p) => s + p.amount, 0);
+  const selectedEmpName = active.find(e => e.id === selectedEmp)?.name || '';
+
+  if (empLoading) return <Spinner />;
 
   return (
-    <div className="space-y-4">
-      <h3 className="text-base font-bold text-[var(--color-text)]">Stipendi</h3>
+    <div className="space-y-4 overflow-hidden">
+      {/* Feedback */}
+      {saved && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-green-100 dark:bg-green-900/40 border border-green-300 dark:border-green-700">
+          <Check size={18} className="text-green-600" />
+          <span className="text-sm font-semibold text-green-800 dark:text-green-300">Pagamento registrato!</span>
+        </div>
+      )}
 
-      {/* View mode toggle */}
-      <div className="flex rounded-lg border border-[var(--color-border)] overflow-hidden">
+      {/* Pay mode toggle */}
+      <div className="flex rounded-xl border border-[var(--color-border)] overflow-hidden">
         <button
-          onClick={() => setViewMode('register')}
-          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
-            viewMode === 'register' ? 'bg-[var(--color-text)] text-[var(--color-surface)]' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+          onClick={() => { setPayMode('giornata'); setAmount(''); }}
+          className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+            payMode === 'giornata' ? 'bg-[var(--color-text)] text-[var(--color-surface)]' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
           }`}
         >
-          Registra
+          Giornata
         </button>
         <button
-          onClick={() => setViewMode('history')}
-          className={`flex-1 px-4 py-2.5 text-sm font-semibold transition-colors ${
-            viewMode === 'history' ? 'bg-[var(--color-text)] text-[var(--color-surface)]' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
+          onClick={() => { setPayMode('mensile'); setAmount(''); }}
+          className={`flex-1 px-4 py-3 text-sm font-semibold transition-colors ${
+            payMode === 'mensile' ? 'bg-[var(--color-text)] text-[var(--color-surface)]' : 'bg-[var(--color-card)] text-[var(--color-subdued)]'
           }`}
         >
-          Riepilogo
+          Mensile
         </button>
       </div>
 
@@ -118,116 +151,112 @@ export default function SalaryManager() {
         </button>
       </div>
 
-      {/* Total card always visible */}
+      {/* Simple form — like revenue page */}
       <div className="rounded-xl border border-purple-200 dark:border-purple-800 overflow-hidden">
-        <div className="bg-purple-50 dark:bg-purple-900/20 px-4 py-3 text-center">
-          <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-400">Totale Stipendi — {formatMonth(date)}</p>
-          <p className="text-2xl font-bold text-purple-800 dark:text-purple-300 mt-1">{formatCurrency(totalMonth)}</p>
-          {totalMonth > 0 && (
-            <p className="text-xs text-purple-600/70 dark:text-purple-400/70 mt-1">
-              Incluso nella Dashboard come uscita
-            </p>
-          )}
+        <div className="bg-purple-50 dark:bg-purple-900/20 px-4 py-2">
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-400">
+            {payMode === 'giornata' ? 'Paga Giornata' : 'Paga Stipendio Mensile'}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-[#252525] p-4 space-y-3">
+          {/* Employee select — big buttons */}
+          <p className="text-[11px] uppercase tracking-wider font-semibold text-[var(--color-subdued)]">Operaio</p>
+          <div className="flex gap-2">
+            {active.map((emp) => (
+              <button
+                key={emp.id}
+                onClick={() => setSelectedEmp(emp.id)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                  selectedEmp === emp.id
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-[var(--color-border)]/30 text-[var(--color-subdued)]'
+                }`}
+              >
+                <User size={14} />
+                {emp.name}
+              </button>
+            ))}
+          </div>
+
+          {/* Amount — big input */}
+          <div>
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-[var(--color-subdued)] mb-1">Importo</p>
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-purple-700 dark:text-purple-400">€</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0,00"
+                className="text-3xl font-bold bg-transparent border-none outline-none w-full text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600"
+              />
+            </div>
+          </div>
+
+          <Button onClick={handleSave} loading={saving} fullWidth disabled={!selectedEmp || !amount}>
+            Registra {payMode === 'giornata' ? 'Giornata' : 'Stipendio'} — {selectedEmpName}
+          </Button>
         </div>
       </div>
 
-      {viewMode === 'register' ? (
-        <>
-          {/* Per employee registration */}
-          {active.map((emp) => (
-            <Card key={emp.id} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-[var(--color-text)]">{emp.name}</p>
-                {/* Payment status badges */}
-                <div className="flex gap-1">
-                  {SALARY_TYPES.map(({ key, label }) => (
-                    <span
-                      key={key}
-                      className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${
-                        isPaid(emp.id, key)
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                          : 'bg-[var(--color-border)]/50 text-[var(--color-subdued)]'
-                      }`}
-                    >
-                      {isPaid(emp.id, key) && <Check size={8} className="inline mr-0.5" />}
-                      {label.split(' ')[0]}
-                    </span>
-                  ))}
+      {/* Total card */}
+      {totalMonth > 0 && (
+        <div className="rounded-xl border border-purple-200 dark:border-purple-800 overflow-hidden">
+          <div className="bg-purple-50 dark:bg-purple-900/20 px-4 py-3 text-center">
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-purple-700 dark:text-purple-400">
+              Totale {formatMonth(date)}
+            </p>
+            <p className="text-2xl font-bold text-purple-800 dark:text-purple-300 mt-1">{formatCurrency(totalMonth)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Payment history */}
+      {histLoading ? <Spinner /> : payments.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs uppercase tracking-wider font-semibold text-[var(--color-subdued)]">Pagamenti registrati</p>
+          {payments.map((p) => (
+            <Card key={p.id} className="p-3 flex items-center gap-3" borderColor="#7C3AED">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-[var(--color-text)]">{p.employee_name}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 font-semibold">
+                    {p.type === 'giornata' ? 'Giornata' : p.type === 'stipendio' ? 'Stipendio' : p.type.toUpperCase()}
+                  </span>
                 </div>
+                <p className="text-xs text-[var(--color-subdued)] mt-0.5">{formatDate(p.month)}</p>
               </div>
-              <div className="grid grid-cols-3 gap-1.5 overflow-hidden">
-                {SALARY_TYPES.map(({ key, label }) => {
-                  const shortLabel = key === 'stipendio' ? 'Stip.' : key === 'inps' ? 'INPS' : 'TFR';
-                  return (
-                    <div key={key} className="space-y-1 min-w-0">
-                      <label className="block text-[9px] uppercase tracking-wider font-semibold text-[var(--color-subdued)] truncate" title={label}>
-                        {shortLabel}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[11px] text-[var(--color-subdued)]">€</span>
-                        <input
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          value={getValue(emp.id, key, emp.monthly_salary)}
-                          onChange={(e) => setValues({ ...values, [getKey(emp.id, key)]: e.target.value })}
-                          className={`w-full pl-5 pr-1 py-2 text-sm rounded-lg border bg-[var(--color-card)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                            isPaid(emp.id, key) ? 'border-green-300 dark:border-green-700' : 'border-[var(--color-border)]'
-                          }`}
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <span className="text-sm font-bold text-purple-700 dark:text-purple-400 shrink-0">
+                {formatCurrency(p.amount)}
+              </span>
+              <button
+                onClick={() => setDeleteId(p.id)}
+                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-[var(--color-subdued)] hover:text-red-600 transition-colors shrink-0"
+              >
+                <Trash2 size={16} />
+              </button>
             </Card>
           ))}
-
-          <Button onClick={handleSave} loading={saving} fullWidth>
-            Registra Pagamenti
-          </Button>
-        </>
-      ) : (
-        /* History / Riepilogo view */
-        historyLoading ? <Spinner /> : (
-          <div className="space-y-2">
-            {history.length === 0 ? (
-              <Card className="p-6 text-center">
-                <p className="text-sm text-[var(--color-subdued)]">Nessun pagamento registrato per {formatMonth(date)}</p>
-              </Card>
-            ) : (
-              <>
-                {/* Group by employee */}
-                {active.map((emp) => {
-                  const empPayments = history.filter((h) => h.employee_id === emp.id);
-                  if (empPayments.length === 0) return null;
-                  const empTotal = empPayments.reduce((s, p) => s + p.amount, 0);
-                  return (
-                    <Card key={emp.id} className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-semibold text-[var(--color-text)]">{emp.name}</p>
-                        <p className="text-sm font-bold text-purple-700 dark:text-purple-400">{formatCurrency(empTotal)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        {empPayments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between py-1 border-b border-[var(--color-border)]/30 last:border-0">
-                            <div className="flex items-center gap-2">
-                              <Check size={14} className="text-green-600" />
-                              <span className="text-xs text-[var(--color-subdued)] capitalize">{p.type}</span>
-                            </div>
-                            <span className="text-xs font-semibold text-[var(--color-text)]">{formatCurrency(p.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </Card>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )
+        </div>
       )}
+
+      {/* Delete modal */}
+      <Modal
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        title="Elimina pagamento"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteId(null)}>Annulla</Button>
+            <Button variant="danger" onClick={handleDelete}>Elimina</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--color-subdued)]">Sei sicuro di voler eliminare questo pagamento?</p>
+      </Modal>
     </div>
   );
 }

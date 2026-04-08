@@ -56,6 +56,7 @@ export const SALARY_TYPES = [
   { key: 'stipendio' as const, label: 'Stipendio' },
   { key: 'inps' as const, label: 'Contributi INPS' },
   { key: 'tfr' as const, label: 'TFR' },
+  { key: 'giornata' as const, label: 'Giornata' },
 ];
 
 export function getCategoryConfig(key: ExpenseCategory): CategoryConfig {

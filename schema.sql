@@ -67,7 +67,7 @@ CREATE TABLE salary_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id uuid NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
   month date NOT NULL,
-  type text NOT NULL CHECK (type IN ('stipendio', 'inps', 'tfr')),
+  type text NOT NULL CHECK (type IN ('stipendio', 'inps', 'tfr', 'giornata')),
   amount numeric(10,2) NOT NULL,
   note text,
   created_at timestamptz DEFAULT now(),
