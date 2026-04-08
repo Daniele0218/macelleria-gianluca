@@ -1,0 +1,36 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - paragraph [ref=e7]: Macelleria Gianluca
+      - heading "Gestionale" [level=1] [ref=e8]
+    - button "Passa a modalità scura" [ref=e9]:
+      - img [ref=e11]
+  - main [ref=e17]:
+    - generic [ref=e19]:
+      - button [ref=e20]:
+        - img [ref=e21]
+      - button "Incasso giornaliero 08/04/2026 2026-04-08" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+        - generic [ref=e26]:
+          - paragraph [ref=e27]: Incasso giornaliero
+          - paragraph [ref=e28]: 08/04/2026
+        - textbox [ref=e29]: 2026-04-08
+      - button [ref=e30]:
+        - img [ref=e31]
+  - navigation [ref=e37]:
+    - generic [ref=e38]:
+      - button "Incassi" [ref=e39]:
+        - img [ref=e40]
+        - generic [ref=e43]: Incassi
+      - button "Spese" [ref=e44]:
+        - img [ref=e45]
+        - generic [ref=e48]: Spese
+      - button "Dashboard" [ref=e49]:
+        - img [ref=e50]
+        - generic [ref=e52]: Dashboard
+      - button "Fornitori" [ref=e53]:
+        - img [ref=e54]
+        - generic [ref=e58]: Fornitori
+      - button "Altro" [ref=e59]:
+        - img [ref=e60]
+        - generic [ref=e63]: Altro

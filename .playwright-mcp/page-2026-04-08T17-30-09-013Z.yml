@@ -1,0 +1,44 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "🥩 Macelleria" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Gianluca
+    - navigation [ref=e8]:
+      - button "Incassi" [ref=e9]:
+        - img [ref=e10]
+        - text: Incassi
+      - button "Spese" [ref=e13]:
+        - img [ref=e14]
+        - text: Spese
+      - button "Dashboard" [ref=e17]:
+        - img [ref=e18]
+        - text: Dashboard
+      - button "Fornitori" [ref=e20]:
+        - img [ref=e21]
+        - text: Fornitori
+      - button "Operai" [ref=e25]:
+        - img [ref=e26]
+        - text: Operai
+      - button "Export" [ref=e31]:
+        - img [ref=e32]
+        - text: Export
+      - button "Impostazioni" [ref=e35]:
+        - img [ref=e36]
+        - text: Impostazioni
+    - generic [ref=e39]:
+      - generic [ref=e40]: Scuro
+      - button "Passa a modalità chiara" [ref=e41]:
+        - img [ref=e43]
+  - main [ref=e46]:
+    - generic [ref=e48]:
+      - button "Ieri" [ref=e49]:
+        - img [ref=e50]
+        - generic [ref=e52]: Ieri
+      - generic [ref=e53]:
+        - img [ref=e54]
+        - generic [ref=e56]:
+          - paragraph [ref=e57]: Incasso giornaliero
+          - paragraph [ref=e58]: mercoledì 8 aprile 2026
+      - button "Domani" [ref=e59]:
+        - generic [ref=e60]: Domani
+        - img [ref=e61]

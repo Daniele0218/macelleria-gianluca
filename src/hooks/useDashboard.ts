@@ -31,11 +31,13 @@ export function useDashboard() {
   const fetchDaily = async (date: Date): Promise<DailyData> => {
     setLoading(true);
     const dateStr = toISODate(date);
+    // Salary payments are stored as first-of-month, so query the month this date belongs to
+    const monthFirst = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
 
     const [revRes, expRes, salRes] = await Promise.all([
       supabase.from('daily_revenues').select('*').eq('date', dateStr).maybeSingle(),
       supabase.from('expenses').select('*').eq('date', dateStr).order('created_at', { ascending: false }),
-      supabase.from('salary_payments').select('amount').eq('month', dateStr),
+      supabase.from('salary_payments').select('amount').eq('month', monthFirst),
     ]);
 
     if (revRes.error) toast.error('Errore caricamento incassi');
@@ -72,7 +74,8 @@ export function useDashboard() {
     const [revRes, expRes, salRes] = await Promise.all([
       supabase.from('daily_revenues').select('*').gte('date', from).lte('date', to).order('date'),
       supabase.from('expenses').select('*').gte('date', from).lte('date', to),
-      supabase.from('salary_payments').select('amount').gte('month', from).lte('month', to),
+      // Salary payments are stored as first-of-month — query the month(s) this week belongs to
+      supabase.from('salary_payments').select('amount').eq('month', `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-01`),
     ]);
 
     const revenues = (revRes.data || []) as DailyRevenue[];
