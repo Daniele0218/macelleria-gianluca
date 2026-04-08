@@ -19,8 +19,8 @@ function downloadFile(content: string, filename: string, type: string) {
 }
 
 function toCSV(data: Record<string, string | number>[]): string {
-  const BOM = '\uFEFF';
-  return BOM + Papa.unparse(data, { delimiter: ';' });
+  // Standard CSV with comma delimiter — works with Google Sheets and Excel
+  return Papa.unparse(data, { delimiter: ',' });
 }
 
 export default function ExportData() {
