@@ -61,5 +61,16 @@ export function useEmployees() {
     return true;
   };
 
-  return { employees, active, inactive, loading, add, updateSalary, toggleActive };
+  const remove = async (id: string) => {
+    const { error } = await supabase.from('employees').delete().eq('id', id);
+    if (error) {
+      toast.error('Errore eliminazione operaio');
+      return false;
+    }
+    toast.success('Operaio eliminato');
+    await fetch();
+    return true;
+  };
+
+  return { employees, active, inactive, loading, add, updateSalary, toggleActive, remove };
 }
