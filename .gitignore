@@ -4,5 +4,8 @@ dist/
 .env.local
 .superpowers/
 .claude/
+.playwright-mcp/
+supabase/.temp/
+*.png
 .DS_Store
 *.log
