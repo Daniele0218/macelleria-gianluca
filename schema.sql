@@ -80,7 +80,7 @@ CREATE INDEX idx_salary_payments_employee ON salary_payments(employee_id);
 -- 5. Categorie/Sottocategorie personalizzate
 CREATE TABLE custom_expense_options (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  type text NOT NULL CHECK (type IN ('category', 'subcategory')),
+  type text NOT NULL CHECK (type IN ('category', 'subcategory', 'hidden_category', 'hidden_subcategory')),
   category_key text,
   name text NOT NULL,
   icon text DEFAULT '📌',
