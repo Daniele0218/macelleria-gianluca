@@ -88,5 +88,48 @@ export function useCustomOptions() {
     return true;
   };
 
-  return { options, loading, getAllCategories, getSubcategoriesFor, addCategory, addSubcategory };
+  const removeCategory = async (categoryKey: string) => {
+    // categoryKey is like "custom_uuid" — extract the uuid
+    const id = categoryKey.replace('custom_', '');
+    // Delete category and its subcategories
+    await supabase.from('custom_expense_options').delete().eq('category_key', categoryKey);
+    const { error } = await supabase.from('custom_expense_options').delete().eq('id', id);
+    if (error) {
+      toast.error('Errore eliminazione categoria');
+      return false;
+    }
+    toast.success('Categoria eliminata!');
+    await fetch();
+    return true;
+  };
+
+  const removeSubcategory = async (categoryKey: string, name: string) => {
+    const { error } = await supabase
+      .from('custom_expense_options')
+      .delete()
+      .eq('type', 'subcategory')
+      .eq('category_key', categoryKey)
+      .eq('name', name);
+    if (error) {
+      toast.error('Errore eliminazione sottocategoria');
+      return false;
+    }
+    toast.success('Sottocategoria eliminata!');
+    await fetch();
+    return true;
+  };
+
+  // Check if a category is custom (deletable)
+  const isCustomCategory = (key: string): boolean => key.startsWith('custom_');
+
+  // Check if a subcategory is custom (deletable)
+  const isCustomSubcategory = (categoryKey: string, name: string): boolean => {
+    return options.some((o) => o.type === 'subcategory' && o.category_key === categoryKey && o.name === name);
+  };
+
+  return {
+    options, loading, getAllCategories, getSubcategoriesFor,
+    addCategory, addSubcategory, removeCategory, removeSubcategory,
+    isCustomCategory, isCustomSubcategory,
+  };
 }

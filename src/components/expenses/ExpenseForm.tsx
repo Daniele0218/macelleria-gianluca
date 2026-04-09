@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import type { ExpenseCategory } from '../../lib/types';
 import { CATEGORIES } from '../../lib/constants';
 import { useCustomOptions } from '../../hooks/useCustomOptions';
@@ -20,7 +20,12 @@ interface Props {
 }
 
 export default function ExpenseForm({ onAdd }: Props) {
-  const { getAllCategories, getSubcategoriesFor, addCategory, addSubcategory } = useCustomOptions();
+  const {
+    getAllCategories, getSubcategoriesFor,
+    addCategory, addSubcategory,
+    removeCategory, removeSubcategory,
+    isCustomCategory, isCustomSubcategory,
+  } = useCustomOptions();
   const allCategories = getAllCategories();
 
   const [category, setCategory] = useState<string>('');
@@ -39,6 +44,10 @@ export default function ExpenseForm({ onAdd }: Props) {
   // New subcategory modal
   const [showNewSub, setShowNewSub] = useState(false);
   const [newSubName, setNewSubName] = useState('');
+
+  // Delete modals
+  const [showDeleteCat, setShowDeleteCat] = useState(false);
+  const [showDeleteSub, setShowDeleteSub] = useState(false);
 
   const config = category ? allCategories.find((c) => c.key === category) : null;
   const isHardcoded = CATEGORIES.some((c) => c.key === category);
@@ -116,6 +125,25 @@ export default function ExpenseForm({ onAdd }: Props) {
     }
   };
 
+  const handleDeleteCategory = async () => {
+    if (!category) return;
+    const ok = await removeCategory(category);
+    if (ok) {
+      setCategory('');
+      setSubcategory('');
+      setShowDeleteCat(false);
+    }
+  };
+
+  const handleDeleteSubcategory = async () => {
+    if (!category || !subcategory) return;
+    const ok = await removeSubcategory(category, subcategory);
+    if (ok) {
+      setSubcategory('');
+      setShowDeleteSub(false);
+    }
+  };
+
   const categoryOptions = [
     ...allCategories.map((c) => ({
       value: c.key,
@@ -134,27 +162,61 @@ export default function ExpenseForm({ onAdd }: Props) {
   const showSubDropdown = config && (allSubcategories.length > 0 || !isHardcoded);
   const showFreeText = config?.freeText && subcategory === '__other__';
 
+  // Can delete?
+  const canDeleteCategory = category && isCustomCategory(category);
+  const canDeleteSubcategory = category && subcategory && subcategory !== '__other__' && subcategory !== '__new__' && isCustomSubcategory(category, subcategory);
+
   return (
     <>
       <Card className="p-4">
         <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">Nuova Spesa</h3>
         <div className="space-y-3">
-          <Select
-            label="Categoria"
-            options={categoryOptions}
-            placeholder="Seleziona categoria..."
-            value={category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-          />
+          {/* Category + delete button */}
+          <div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Select
+                  label="Categoria"
+                  options={categoryOptions}
+                  placeholder="Seleziona categoria..."
+                  value={category}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                />
+              </div>
+              {canDeleteCategory && (
+                <button
+                  onClick={() => setShowDeleteCat(true)}
+                  className="mb-0.5 p-2.5 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 transition-colors shrink-0"
+                  title="Elimina categoria"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          </div>
 
+          {/* Subcategory + delete button */}
           {showSubDropdown && (
-            <Select
-              label="Sottocategoria"
-              options={subcategoryOptions}
-              placeholder="Seleziona..."
-              value={subcategory}
-              onChange={(e) => handleSubcategoryChange(e.target.value)}
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Select
+                  label="Sottocategoria"
+                  options={subcategoryOptions}
+                  placeholder="Seleziona..."
+                  value={subcategory}
+                  onChange={(e) => handleSubcategoryChange(e.target.value)}
+                />
+              </div>
+              {canDeleteSubcategory && (
+                <button
+                  onClick={() => setShowDeleteSub(true)}
+                  className="mb-0.5 p-2.5 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 hover:text-red-600 transition-colors shrink-0"
+                  title="Elimina sottocategoria"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
           )}
 
           {showFreeText && (
@@ -292,6 +354,40 @@ export default function ExpenseForm({ onAdd }: Props) {
           onChange={(e) => setNewSubName(e.target.value)}
           placeholder="Es: nome fornitore..."
         />
+      </Modal>
+
+      {/* Delete Category Modal */}
+      <Modal
+        open={showDeleteCat}
+        onClose={() => setShowDeleteCat(false)}
+        title="Elimina categoria"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowDeleteCat(false)}>Annulla</Button>
+            <Button variant="danger" onClick={handleDeleteCategory}>Elimina</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--color-subdued)]">
+          Eliminare la categoria <strong className="text-[var(--color-text)]">{config?.label}</strong> e tutte le sue sottocategorie? Le spese gia' registrate non verranno cancellate.
+        </p>
+      </Modal>
+
+      {/* Delete Subcategory Modal */}
+      <Modal
+        open={showDeleteSub}
+        onClose={() => setShowDeleteSub(false)}
+        title="Elimina sottocategoria"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowDeleteSub(false)}>Annulla</Button>
+            <Button variant="danger" onClick={handleDeleteSubcategory}>Elimina</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-[var(--color-subdued)]">
+          Eliminare la sottocategoria <strong className="text-[var(--color-text)]">{subcategory}</strong>? Le spese gia' registrate non verranno cancellate.
+        </p>
       </Modal>
     </>
   );
